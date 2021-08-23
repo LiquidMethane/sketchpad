@@ -15,6 +15,8 @@ class GUI:
         # color for drawing shapes
         self.__color = '#000000'
 
+        self.__txtvar = tk.StringVar()
+
         # icons for icon buttons
         self.__icons = [
             tk.PhotoImage(file='freehand.png'),
@@ -55,6 +57,14 @@ class GUI:
         self.__frm_color.bind('<Button-1>', lambda e: self.__pick_color())
         self.__frm_color.place(x=535, y=25)
 
+        # label
+        self.__lbl = tk.Label(
+            master=self.__root,
+            font=('TkDefaultFont', 30),
+            textvariable=self.__txtvar
+        )
+        self.__lbl.place(x=700, y=20)
+
         # canvas
         self.__canvas = tk.Canvas(
             master=self.__root,
@@ -84,6 +94,9 @@ class GUI:
     def __pick_color(self):
         self.__color = askcolor()[1]
         self.__frm_color.config(bg=self.__color)
+
+    def set_label_text(self, txt):
+        self.__txtvar.set(txt)
 
 
 def main():
