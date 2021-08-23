@@ -1,3 +1,5 @@
+from drawables import Drawables
+
 class Controller:
     def __init__(self, gui):
         # gui object
@@ -25,7 +27,7 @@ class Controller:
         self.temp_shape = None
 
         # to store a list of temporary canvas items
-        self.temp_list = []
+        self.temp_list = Drawables(self.canvas)
 
         # to store the index for selected item(s)
         self.selected_idx = None
@@ -39,7 +41,11 @@ class Controller:
         self.first_poly_click = True
 
         # stores all drawn shapes on screen
-        self.__drawables = []
+        self.__drawables = Drawables(self.canvas)
+
+        # stores undo and redo steps
+        self.__undo_stack = []
+        self.__redo_stack = []
 
         self.__initialize()
 
@@ -47,6 +53,10 @@ class Controller:
         # shift key detection for drawing regular shapes (square and circle)
         self.gui.get_root().bind('<KeyPress-Shift_L>', self.set_regular_mode)
         self.gui.get_root().bind('<KeyRelease-Shift_L>', self.reset_regular_mode)
+
+        # undo and redo
+        self.gui.get_root().bind('Control-z', self.undo)
+        self.gui.get_root().bind('Control-y', self.redo)
 
         # set up behaviours for function buttons
         self.btn_list[0].bind('<Button-1>', self.set_freehand_mode)
@@ -63,6 +73,17 @@ class Controller:
     def reset_regular_mode(self, _):
         self.regular = False
         self.gui.get_root().bind('<KeyPress-Shift_L>', self.set_regular_mode)
+
+    def undo(self):
+        # self.__redo_stack.append(self.__undo_stack[-1])
+        # del self.__undo_stack[-1]
+        pass
+
+    def redo(self):
+        pass
+
+    def update_undo(self):
+        self.__undo_stack.append(self.__drawables)
 
     # canvas behaviour for drawing straight lines
     def set_line_mode(self, _):
@@ -98,6 +119,7 @@ class Controller:
 
     def line_up(self, _):
         self.__drawables.append(self.temp_shape)
+        self.update_undo()
         self.temp_shape = None
         self.debug()
 
@@ -129,7 +151,8 @@ class Controller:
 
     def fh_up(self, _):
         self.__drawables.append(self.temp_list)
-        self.temp_list = []
+        self.update_undo()
+        self.temp_list.clear()
         self.debug()
 
     # canvas behaviour for drawing rectangles (and squares)
@@ -214,6 +237,7 @@ class Controller:
 
     def rect_up(self, _):
         self.__drawables.append(self.temp_shape)
+        self.update_undo()
         self.temp_shape = None
         self.debug()
 
@@ -299,6 +323,7 @@ class Controller:
 
     def oval_up(self, _):
         self.__drawables.append(self.temp_shape)
+        self.update_undo()
         self.temp_shape = None
         self.debug()
 
@@ -356,7 +381,8 @@ class Controller:
             self.temp_list.append(self.temp_shape)
         if self.temp_list:
             self.__drawables.append(self.temp_list)
-        self.temp_list = []
+            self.update_undo()
+        self.temp_list.clear()
         self.first_poly_click = True
         self.debug()
 
@@ -432,6 +458,7 @@ class Controller:
 
         self.delete_items_recur(self.__drawables[self.selected_idx])
         del self.__drawables[self.selected_idx]
+        self.update_undo()
         self.is_cut = True
 
     def delete_items_recur(self, item):
@@ -457,21 +484,23 @@ class Controller:
         if self.selected_idx is None or self.is_cut:
             return
 
-        self.paste_items(self.clipboard, self.__drawables)
+        self.paste_items(self.clipboard, self.__drawables, 20)
         self.debug()
 
-    def paste_items(self, item, container):
+    def paste_items(self, item, container, offset):
         if type(item) is list:
             inner_container = []
             for i in item:
-                self.paste_items(i, inner_container)
+                self.paste_items(i, inner_container, offset)
             container.append(inner_container)
         else:
-            container.append(self.paste_item(item))
+            container.append(self.paste_item(item, offset))
 
-    def paste_item(self, item):
+        self.update_undo()
+
+    def paste_item(self, item, offset):
         shape = list(self.canvas.gettags(item))
-        coords = [coord + 10 for coord in list(self.canvas.coords(item))]
+        coords = [coord + offset for coord in list(self.canvas.coords(item))]
 
         if 'rectangle' in shape:
             color = self.canvas.itemcget(item, 'outline')
