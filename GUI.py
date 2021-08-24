@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter.colorchooser import askcolor
+from tkinter.filedialog import askopenfile, asksaveasfile
 from controller import Controller
 
 
@@ -24,7 +25,9 @@ class GUI:
             tk.PhotoImage(file='rectangle.png'),
             tk.PhotoImage(file='oval.png'),
             tk.PhotoImage(file='polygon.png'),
-            tk.PhotoImage(file='cursor.png')
+            tk.PhotoImage(file='cursor.png'),
+            tk.PhotoImage(file='save.png'),
+            tk.PhotoImage(file='load.png'),
         ]
 
         # configure tkinter window
@@ -36,7 +39,7 @@ class GUI:
         self.__btn_list = []
 
         # put buttons on window
-        for i in range(0, 6):
+        for i in range(0, 8):
             self.__btn_list.append(
                 tk.Button(
                     master=self.__root,
@@ -55,7 +58,7 @@ class GUI:
             bg='black'
         )
         self.__frm_color.bind('<Button-1>', lambda e: self.__pick_color())
-        self.__frm_color.place(x=535, y=25)
+        self.__frm_color.place(x=705, y=25)
 
         # label
         self.__lbl = tk.Label(
@@ -63,7 +66,7 @@ class GUI:
             font=('TkDefaultFont', 30),
             textvariable=self.__txtvar
         )
-        self.__lbl.place(x=700, y=20)
+        self.__lbl.place(x=850, y=20)
 
         # canvas
         self.__canvas = tk.Canvas(
@@ -98,6 +101,11 @@ class GUI:
     def set_label_text(self, txt):
         self.__txtvar.set(txt)
 
+    def load_file(self):
+        return askopenfile(filetypes=[('json files', '.json')])
+
+    def save_file(self):
+        return asksaveasfile(filetypes=[('json files', '.json')])
 
 def main():
     gui = GUI()

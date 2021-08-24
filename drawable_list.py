@@ -1,12 +1,15 @@
-class Drawables:
+from drawable import Drawable
+
+
+class DrawableList:
 
     def __init__(self, canvas):
         self.__list = []
         self.canvas = canvas
 
     def append(self, item):
-        if isinstance(item, Drawables):
-            self.__list.append(item.__get_list())
+        if isinstance(item, DrawableList):
+            self.__list.append(item.get_list())
 
         else:
             tag = list(self.canvas.gettags(item))
@@ -16,12 +19,10 @@ class Drawables:
             else:
                 color = self.canvas.itemcget(item, 'fill')
 
-            # print(tag, coords, color)
+            self.__list.append(Drawable(item, tag[0], coords, color))
 
-            self.__list.append([item, tag[0], coords[0], coords[1], coords[2], coords[3], color])
-
-    def delete(self, idx):
-        del self.__list[idx]
+    def __delitem__(self, key):
+        del self.__list[key]
 
     def __repr__(self):
         return str(self.__list)
@@ -29,9 +30,15 @@ class Drawables:
     def __getitem__(self, item):
         return self.__list[item]
 
+    def __iter__(self):
+        return self.__list.__iter__()
+
+    def __len__(self):
+        return len(self.__list)
+
     def clear(self):
         self.__list = []
 
-    def __get_list(self):
+    def get_list(self):
         return self.__list
 

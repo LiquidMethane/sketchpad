@@ -1,4 +1,8 @@
-from drawables import Drawables
+from drawable_list import DrawableList
+from drawable import Drawable
+import json
+import pickle
+
 
 class Controller:
     def __init__(self, gui):
@@ -27,7 +31,7 @@ class Controller:
         self.temp_shape = None
 
         # to store a list of temporary canvas items
-        self.temp_list = Drawables(self.canvas)
+        self.temp_list = DrawableList(self.canvas)
 
         # to store the index for selected item(s)
         self.selected_idx = None
@@ -41,10 +45,9 @@ class Controller:
         self.first_poly_click = True
 
         # stores all drawn shapes on screen
-        self.__drawables = Drawables(self.canvas)
+        self.__drawables = DrawableList(self.canvas)
 
-        # stores undo and redo steps
-        self.__undo_stack = []
+        # stores redo steps
         self.__redo_stack = []
 
         self.__initialize()
@@ -55,8 +58,8 @@ class Controller:
         self.gui.get_root().bind('<KeyRelease-Shift_L>', self.reset_regular_mode)
 
         # undo and redo
-        self.gui.get_root().bind('Control-z', self.undo)
-        self.gui.get_root().bind('Control-y', self.redo)
+        self.gui.get_root().bind('<Control-z>', self.undo)
+        self.gui.get_root().bind('<Control-y>', self.redo)
 
         # set up behaviours for function buttons
         self.btn_list[0].bind('<Button-1>', self.set_freehand_mode)
@@ -65,6 +68,8 @@ class Controller:
         self.btn_list[3].bind('<Button-1>', self.set_oval_mode)
         self.btn_list[4].bind('<Button-1>', self.set_poly_mode)
         self.btn_list[5].bind('<Button-1>', self.set_cursor_mode)
+        self.btn_list[6].bind('<Button-1>', self.save_file)
+        self.btn_list[7].bind('<Button-1>', self.load_file)
 
     def set_regular_mode(self, _):
         self.regular = True
@@ -74,16 +79,32 @@ class Controller:
         self.regular = False
         self.gui.get_root().bind('<KeyPress-Shift_L>', self.set_regular_mode)
 
-    def undo(self):
-        # self.__redo_stack.append(self.__undo_stack[-1])
-        # del self.__undo_stack[-1]
-        pass
+    def undo(self, _):
+        if not self.__drawables.get_list():
+            return
 
-    def redo(self):
-        pass
+        item = self.__drawables[-1]
+        self.__redo_stack.append(item)
+        del self.__drawables[-1]
 
-    def update_undo(self):
-        self.__undo_stack.append(self.__drawables)
+        self.delete_items_recur(item)
+
+    def redo(self, _):
+        if not self.__redo_stack:
+            return
+
+        item = self.__redo_stack[-1]
+        del self.__redo_stack[-1]
+
+        self.paste_items(item, self.__drawables, 0)
+
+    def clear_redo(self):
+        self.__redo_stack = []
+
+    # def update_undo(self):
+    #     print('updated undo stack')
+    #     self.__undo_stack.append(self.__drawables)
+    #     print(f'Undo stack length ({len(self.__undo_stack)}): {self.__undo_stack}')
 
     # canvas behaviour for drawing straight lines
     def set_line_mode(self, _):
@@ -119,9 +140,8 @@ class Controller:
 
     def line_up(self, _):
         self.__drawables.append(self.temp_shape)
-        self.update_undo()
+        self.clear_redo()
         self.temp_shape = None
-        self.debug()
 
     # canvas behaviour for freehand drawing
     def set_freehand_mode(self, _):
@@ -151,9 +171,8 @@ class Controller:
 
     def fh_up(self, _):
         self.__drawables.append(self.temp_list)
-        self.update_undo()
+        self.clear_redo()
         self.temp_list.clear()
-        self.debug()
 
     # canvas behaviour for drawing rectangles (and squares)
     def set_rect_mode(self, _):
@@ -237,9 +256,8 @@ class Controller:
 
     def rect_up(self, _):
         self.__drawables.append(self.temp_shape)
-        self.update_undo()
+        self.clear_redo()
         self.temp_shape = None
-        self.debug()
 
     # canvas behaviour for drawing ovals (and circles)
     def set_oval_mode(self, _):
@@ -323,9 +341,8 @@ class Controller:
 
     def oval_up(self, _):
         self.__drawables.append(self.temp_shape)
-        self.update_undo()
+        self.clear_redo()
         self.temp_shape = None
-        self.debug()
 
     # canvas behaviour for drawing polygons
     def set_poly_mode(self, _):
@@ -339,7 +356,6 @@ class Controller:
         self.gui.set_label_text('Polygon Mode')
 
     def poly_left(self, event):
-        print('left click')
         if self.first_poly_click:
             self.x0, self.y0 = event.x, event.y
             self.temp_shape = self.canvas.create_line(self.x0,
@@ -381,10 +397,9 @@ class Controller:
             self.temp_list.append(self.temp_shape)
         if self.temp_list:
             self.__drawables.append(self.temp_list)
-            self.update_undo()
+            self.clear_redo()
         self.temp_list.clear()
         self.first_poly_click = True
-        self.debug()
 
     # canvas behaviour for selecting items
     def set_cursor_mode(self, _):
@@ -405,12 +420,12 @@ class Controller:
             return
 
         self.x0, self.y0 = event.x, event.y
-        self.selected_idx = self.search(self.__drawables, clicked[0])
+        self.selected_idx = self.search(self.__drawables.get_list(), clicked[0])
 
     def search(self, container, item):
         for idx, i in enumerate(container):
-            if type(i) is not list:
-                if i == item:
+            if isinstance(i, Drawable):
+                if i.ident == item:
                     return idx
 
             elif type(i) is list:
@@ -420,8 +435,8 @@ class Controller:
 
     def does_contain(self, container, item):
         for i in container:
-            if type(i) is not list:
-                if i == item:
+            if isinstance(i, Drawable):
+                if i.ident == item:
                     return True
             elif type(i) is list:
                 return self.does_contain(i, item)
@@ -430,7 +445,7 @@ class Controller:
         clicked = list(self.canvas.find_withtag('current'))
         if not clicked:
             return
-        self.selected_idx = self.search(self.__drawables, clicked[0])
+        self.selected_idx = self.search(self.__drawables.get_list(), clicked[0])
 
         if self.selected_idx is not None:
             to_be_moved = self.__drawables[self.selected_idx]
@@ -439,7 +454,8 @@ class Controller:
             if type(to_be_moved) is list:
                 self.move(to_be_moved, offset)
             else:
-                self.canvas.move(to_be_moved, offset[0], offset[1])
+                self.canvas.move(to_be_moved.ident, offset[0], offset[1])
+                to_be_moved.coords = self.canvas.coords(to_be_moved.ident)
 
             self.x0, self.y0 = event.x, event.y
             self.selected_idx = None
@@ -449,17 +465,18 @@ class Controller:
             if type(i) is list:
                 self.move(i, offset)
             else:
-                self.canvas.move(i, offset[0], offset[1])
+                self.canvas.move(i.ident, offset[0], offset[1])
+                i.coords = self.canvas.coords(i.ident)
 
     def cut(self, _):
 
         if self.selected_idx is None:
             return
 
+        self.clipboard = self.__drawables[self.selected_idx]
+
         self.delete_items_recur(self.__drawables[self.selected_idx])
         del self.__drawables[self.selected_idx]
-        self.update_undo()
-        self.is_cut = True
 
     def delete_items_recur(self, item):
         if type(item) is list:
@@ -467,9 +484,9 @@ class Controller:
                 if type(i) is list:
                     self.delete_items_recur(i)
                 else:
-                    self.canvas.delete(i)
+                    self.canvas.delete(i.ident)
         else:
-            self.canvas.delete(item)
+            self.canvas.delete(item.ident)
 
     def copy(self, _):
 
@@ -477,7 +494,6 @@ class Controller:
             return
 
         self.clipboard = self.__drawables[self.selected_idx]
-        self.is_cut = False
 
     def paste(self, _):
 
@@ -485,7 +501,6 @@ class Controller:
             return
 
         self.paste_items(self.clipboard, self.__drawables, 20)
-        self.debug()
 
     def paste_items(self, item, container, offset):
         if type(item) is list:
@@ -496,42 +511,36 @@ class Controller:
         else:
             container.append(self.paste_item(item, offset))
 
-        self.update_undo()
-
     def paste_item(self, item, offset):
-        shape = list(self.canvas.gettags(item))
-        coords = [coord + offset for coord in list(self.canvas.coords(item))]
+        coords = [coord + offset for coord in item.coords]
 
-        if 'rectangle' in shape:
-            color = self.canvas.itemcget(item, 'outline')
+        if item.tag == 'rectangle':
             return self.canvas.create_rectangle(coords[0],
                                                 coords[1],
                                                 coords[2],
                                                 coords[3],
                                                 width=self.width,
-                                                outline=color,
+                                                outline=item.color,
                                                 tags='rectangle'
                                                 )
 
-        elif 'oval' in shape:
-            color = self.canvas.itemcget(item, 'outline')
+        elif item.tag == 'oval':
             return self.canvas.create_oval(coords[0],
                                            coords[1],
                                            coords[2],
                                            coords[3],
                                            width=self.width,
-                                           outline=color,
+                                           outline=item.color,
                                            tags='oval'
                                            )
 
         else:
-            color = self.canvas.itemcget(item, 'fill')
             return self.canvas.create_line(coords[0],
                                            coords[1],
                                            coords[2],
                                            coords[3],
                                            width=self.width,
-                                           fill=color,
+                                           fill=item.color,
                                            tags='line'
                                            )
 
@@ -539,19 +548,16 @@ class Controller:
     def reset(self):
         self.x0 = self.y0 = 0
         if self.mode in ['line', 'freehand', 'rectangle', 'oval']:
-            # print('cleared line/freehand/rect/oval behaviour')
             self.canvas.bind('<Button-1>', self.dummy_behavior)
             self.canvas.bind('<B1-Motion>', self.dummy_behavior)
             self.canvas.bind('<ButtonRelease-1>', self.dummy_behavior)
 
         elif self.mode in ['poly']:
-            # print('cleared poly behaviour')
             self.canvas.bind('<Button-1>', self.dummy_behavior)
             self.canvas.bind('<Motion>', self.dummy_behavior)
             self.canvas.bind('<Button-3>', self.dummy_behavior)
 
         elif self.mode in ['cursor']:
-            # print('cleared cursor behaviour')
             self.canvas.bind('<Button-1>', self.dummy_behavior)
             self.canvas.bind('<B1-Motion>', self.dummy_behavior)
             self.gui.get_root().bind('<Control-x>', self.dummy_behavior)
@@ -561,6 +567,34 @@ class Controller:
     def dummy_behavior(self, event):
         pass
 
-    # for debug purpose
-    def debug(self):
+    def save_file(self, _):
+        # f = self.gui.save_file()
+        # if f is None:
+        #     return
+
+        serialized_list = []
+
+        self.serialize(self.__drawables.get_list(), serialized_list)
+
+        print(serialized_list[0])
         print(self.__drawables)
+        jsonify = json.dumps(serialized_list[0])
+        recon = json.loads(jsonify)
+        print(recon)
+        pass
+
+    def serialize(self, item, container):
+        if type(item) is list:
+            inner_container = []
+            for i in item:
+                self.serialize(i, inner_container)
+            container.append(inner_container)
+        elif isinstance(item, Drawable):
+            container.append([item.ident, item.tag, item.coords, item.color])
+
+    def load_file(self, _):
+        f = self.gui.load_file()
+        if f is None:
+            return
+        pass
+
