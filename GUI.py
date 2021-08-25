@@ -24,7 +24,10 @@ class GUI:
             tk.PhotoImage(file='rectangle.png'),
             tk.PhotoImage(file='oval.png'),
             tk.PhotoImage(file='polygon.png'),
-            tk.PhotoImage(file='cursor.png')
+            tk.PhotoImage(file='cursor.png'),
+            tk.PhotoImage(file='group.png'),
+            tk.PhotoImage(file='save.png'),
+            tk.PhotoImage(file='load.png'),
         ]
 
         # configure tkinter window
@@ -36,7 +39,7 @@ class GUI:
         self.__btn_list = []
 
         # put buttons on window
-        for i in range(0, 6):
+        for i in range(0, 9):
             self.__btn_list.append(
                 tk.Button(
                     master=self.__root,
@@ -55,7 +58,7 @@ class GUI:
             bg='black'
         )
         self.__frm_color.bind('<Button-1>', lambda e: self.__pick_color())
-        self.__frm_color.place(x=535, y=25)
+        self.__frm_color.place(x=790, y=25)
 
         # label
         self.__lbl = tk.Label(
@@ -63,7 +66,7 @@ class GUI:
             font=('TkDefaultFont', 30),
             textvariable=self.__txtvar
         )
-        self.__lbl.place(x=700, y=20)
+        self.__lbl.place(x=930, y=20)
 
         # canvas
         self.__canvas = tk.Canvas(
