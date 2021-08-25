@@ -7,4 +7,4 @@ class Drawable:
 
     def __repr__(self):
         # return f'ID: {self.ident}  tag: {self.tag}  coords: {self.coords}, color: {self.color}'
-        return str([self.ident, self.tag, self.coords, self.color])
+        return 'Drawable: {' + str(self.ident) + ', ' + str(self.tag) + ', ' + str(self.coords) + ', ' + str(self.color) + '}'
