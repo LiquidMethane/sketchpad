@@ -1,7 +1,8 @@
 from drawable_list import DrawableList
 from drawable import Drawable
-import json
 import pickle
+
+from tkinter.filedialog import askopenfile, asksaveasfile
 
 
 class Controller:
@@ -568,20 +569,15 @@ class Controller:
         pass
 
     def save_file(self, _):
-        # f = self.gui.save_file()
-        # if f is None:
-        #     return
+        f = asksaveasfile(mode='wb', filetypes=[('pickle files', '.pickle')])
+        if f is None:
+            return 'break'
 
         serialized_list = []
-
         self.serialize(self.__drawables.get_list(), serialized_list)
-
-        print(serialized_list[0])
-        print(self.__drawables)
-        jsonify = json.dumps(serialized_list[0])
-        recon = json.loads(jsonify)
-        print(recon)
-        pass
+        f.write(pickle.dumps(serialized_list[0]))
+        f.close()
+        return 'break'
 
     def serialize(self, item, container):
         if type(item) is list:
@@ -593,8 +589,61 @@ class Controller:
             container.append([item.ident, item.tag, item.coords, item.color])
 
     def load_file(self, _):
-        f = self.gui.load_file()
+        f = askopenfile(mode='rb', filetypes=[('pickle files', '.pickle')])
         if f is None:
-            return
-        pass
+            return 'break'
 
+        self.clear_canvas(self.__drawables)
+        self.__drawables.clear()
+        container = []
+        self.deserialize(pickle.load(f), container)
+        self.__drawables.set_list(container[0])
+        f.close()
+        return 'break'
+
+    def deserialize(self, item, container):
+        if type(item) is list and len(item) == 4 and type(item[1]) is str:
+            if item[1] == 'rectangle':
+                ident = self.canvas.create_rectangle(item[2][0],
+                                                     item[2][1],
+                                                     item[2][2],
+                                                     item[2][3],
+                                                     width=self.width,
+                                                     outline=item[3],
+                                                     tags='rectangle'
+                                                     )
+
+            elif item[1] == 'oval':
+                ident = self.canvas.create_oval(item[2][0],
+                                                item[2][1],
+                                                item[2][2],
+                                                item[2][3],
+                                                width=self.width,
+                                                outline=item[3],
+                                                tags='oval'
+                                                )
+
+            else:
+                ident = self.canvas.create_line(item[2][0],
+                                                item[2][1],
+                                                item[2][2],
+                                                item[2][3],
+                                                width=self.width,
+                                                fill=item[3],
+                                                tags='line'
+                                                )
+
+            container.append(Drawable(ident, item[1], item[2], item[3]))
+
+        elif type(item) is list:
+            inner_container = []
+            for i in item:
+                self.deserialize(i, inner_container)
+            container.append(inner_container)
+
+    def clear_canvas(self, item):
+        if isinstance(item, Drawable):
+            self.canvas.delete(item.ident)
+        else:
+            for i in item:
+                self.clear_canvas(i)

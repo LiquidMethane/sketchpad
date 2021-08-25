@@ -101,11 +101,11 @@ class GUI:
     def set_label_text(self, txt):
         self.__txtvar.set(txt)
 
-    def load_file(self):
-        return askopenfile(filetypes=[('json files', '.json')])
-
-    def save_file(self):
-        return asksaveasfile(filetypes=[('json files', '.json')])
+    # def load_file(self):
+    #     return askopenfile(mode='rb', filetypes=[('pickle files', '.pickle')])
+    #
+    # def save_file(self):
+    #     return asksaveasfile(mode='wb', filetypes=[('json files', '.pickle')])
 
 def main():
     gui = GUI()

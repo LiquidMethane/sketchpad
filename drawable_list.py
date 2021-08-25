@@ -42,3 +42,5 @@ class DrawableList:
     def get_list(self):
         return self.__list
 
+    def set_list(self, container):
+        self.__list = container
