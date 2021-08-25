@@ -19,15 +19,15 @@ class GUI:
 
         # icons for icon buttons
         self.__icons = [
-            tk.PhotoImage(file='freehand.png'),
-            tk.PhotoImage(file='line.png'),
-            tk.PhotoImage(file='rectangle.png'),
-            tk.PhotoImage(file='oval.png'),
-            tk.PhotoImage(file='polygon.png'),
-            tk.PhotoImage(file='cursor.png'),
-            tk.PhotoImage(file='group.png'),
-            tk.PhotoImage(file='save.png'),
-            tk.PhotoImage(file='load.png'),
+            tk.PhotoImage(file='icons/freehand.png'),
+            tk.PhotoImage(file='icons/line.png'),
+            tk.PhotoImage(file='icons/rectangle.png'),
+            tk.PhotoImage(file='icons/oval.png'),
+            tk.PhotoImage(file='icons/polygon.png'),
+            tk.PhotoImage(file='icons/cursor.png'),
+            tk.PhotoImage(file='icons/group.png'),
+            tk.PhotoImage(file='icons/save.png'),
+            tk.PhotoImage(file='icons/load.png'),
         ]
 
         # configure tkinter window
